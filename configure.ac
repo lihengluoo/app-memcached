@@ -335,6 +335,7 @@ AC_ARG_WITH(libevent,
 dnl ------------------------------------------------------
 dnl libevent detection.  swiped from Tor.  modified a bit.
 
+if test "x$with_libevent" != "xno"; then
 LIBEVENT_URL=https://www.monkey.org/~provos/libevent/
 
 AC_CACHE_CHECK([for libevent directory], ac_cv_libevent_dir, [
@@ -423,6 +424,8 @@ return (ver != NULL && *ver != '1') ? 0 : 1;
    ],
    []
 [])
+
+fi
 
 trylibssldir=""
 AC_ARG_WITH(libssl,

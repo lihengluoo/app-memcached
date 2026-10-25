@@ -31,9 +31,13 @@ typedef void (*event_callback_fn)(evutil_socket_t fd, short events, void *arg);
 
 #define EVENT_BASE_FLAG_NOLOCK 0x08
 
-/* Opaque here; completed in event.c. */
-struct event_base;
-struct event_config;
+struct event_base {
+    int unused;
+};
+
+struct event_config {
+    int unused;
+};
 
 /* The engine embeds events by value in conn and LIBEVENT_THREAD. */
 struct event {

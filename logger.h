@@ -198,6 +198,10 @@ void logger_init(void);
 void logger_stop(void);
 logger *logger_create(void);
 
+/* The in-process benchmark has no log consumers or logger state. */
+#ifdef bench_in_process
+#define LOGGER_LOG(l, flag, type, ...) ((void)0)
+#else
 #define LOGGER_LOG(l, flag, type, ...) \
     do { \
         logger *myl = l; \
@@ -206,6 +210,7 @@ logger *logger_create(void);
         if (myl->eflags & flag) \
             logger_log(myl, type, __VA_ARGS__); \
     } while (0)
+#endif
 
 enum logger_ret_type logger_log(logger *l, const enum log_entry_type event, const void *entry, ...);
 

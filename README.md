@@ -1,5 +1,38 @@
 # Memcached
 
+## In-process benchmark
+
+`make benchmark` builds `build/memcached-bench`. Run it directly to replay the
+default YCSB workload: 100,000 records and 10,000,000 operations across 16
+threads. The driver loads records before timing and uses the engine's normal
+item, slab, hash-table, and locking code. It owns worker creation; the server
+main, notification threads, and background logger are excluded from this build.
+Engine logging hooks are compiled out; logger keys and buffers are not
+initialized. The bundled libevent shim supplies setup calls without starting an
+event loop, so the benchmark needs pthreads and libm but no installed libevent
+development package. `make test` checks that benchmark logging evaluates no
+arguments and requires no logger initialization or linkage.
+
+Override workload constants with `CPPFLAGS`, using a separate build directory
+when changing them, for example:
+
+```sh
+make benchmark build_dir=build/small \
+    CPPFLAGS='-Dbench_thread_count=4 -Dbench_record_count=1000 -Dbench_op_count=10000'
+build/small/memcached-bench
+```
+
+In the Delphi checkout, capture the same application through the shared script:
+
+```sh
+../../scripts/build.sh --make-dir . --make-target benchmark \
+    --executable wllvm/memcached-bench --name memcached-bench
+../../compiler/build/delphi-compiler ../IR/memcached-bench.ll
+```
+
+`make ir` also uses the shared script and writes `build/ir/memcached-bench.ll`.
+All executables, configuration checks, objects, and IR are generated files.
+
 Memcached is a high performance multithreaded event-based key/value cache
 store intended to be used in a distributed system.
 

@@ -15,67 +15,11 @@
  * engine objects, ycsb.o (-lm), and libevent_shim/event.o while the server
  * main() in memcached.c is compiled out. The engine objects are compiled with
  * -Ilibevent_shim so the bundled no-op event API replaces libevent: the
- * upstream configure still needs libevent-dev once to generate config.h, but
- * the bench itself compiles and links against POSIX pthreads only
+ * benchmark configuration skips libevent detection, and the bench compiles
+ * and links against POSIX pthreads only
  * (link with -pthread -lm, no -levent). Knobs are overridable from the build
  * command line.
  */
-#ifndef bench_thread_count
-#define bench_thread_count 16
-#endif
-#ifndef bench_op_count
-#define bench_op_count 10000000
-#endif
-/* Records loaded before the timed replay; record keys span [0, count). */
-#ifndef bench_record_count
-#define bench_record_count 100000
-#endif
-/* Stored record size in bytes including the trailing "\r\n". */
-#ifndef bench_record_bytes
-#define bench_record_bytes 64
-#endif
-/* YCSB workload knobs mirroring ycsb_options; theta zero samples uniformly. */
-#ifndef bench_read_percent
-#define bench_read_percent workload_a_read_percent
-#endif
-#ifndef bench_key_distribution
-#define bench_key_distribution distribution_zipfian
-#endif
-#ifndef bench_theta
-#define bench_theta 0.99
-#endif
-#ifndef bench_rng_state
-#define bench_rng_state 1
-#endif
-/* assoc hash table power; must stay above the item lock table power that
- * memcached_thread_init derives from bench_thread_count. */
-#ifndef bench_hash_power
-#define bench_hash_power 17
-#endif
-#ifndef bench_max_bytes
-#define bench_max_bytes (2ULL * 1024 * 1024 * 1024)
-#endif
-
-/* "key" plus the longest decimal uint64 fits in 24 bytes including the NUL. */
-enum { bench_key_capacity = 24 };
-
-/* Record keys are rendered once up front; the timed replay only reads the
- * shared table, so no formatting or stdio call is on the measured path. */
-typedef struct {
-    char text[bench_key_capacity];
-    size_t length;
-} bench_record_key;
-
-typedef struct {
-    pthread_t thread_id;
-    int worker_id;
-    const bench_record_key *keys;
-    const ycsb_workload *workload;
-    uint64_t checksum;
-    uint64_t misses;
-    uint64_t alloc_fails;
-} bench_worker;
-
 static uint64_t get_time_ms(void)
 {
     struct timespec now;
@@ -85,29 +29,25 @@ static uint64_t get_time_ms(void)
 
 /*
  * Claims the worker slot that memcached_thread_init prepared for this thread.
- * worker_libevent() sets these when the server owns the threads; take over
- * when the in-process build skipped it. The guards make the repeated claims
- * from population and replay idempotent.
+ * Initialize the LRU bump buffer here because worker_libevent() is skipped.
+ * The guard makes repeated claims from population and replay idempotent.
  */
 static LIBEVENT_THREAD *claim_worker_thread(int worker_id)
 {
     LIBEVENT_THREAD *me = get_worker_thread(worker_id);
 
-    if (me->l == NULL) {
-        me->l = logger_create();
-    }
     if (me->lru_bump_buf == NULL) {
         me->lru_bump_buf = item_lru_bump_buf_create();
     }
-    if (me->l == NULL || me->lru_bump_buf == NULL) {
+    if (me->lru_bump_buf == NULL) {
         abort();
     }
     return me;
 }
 
 /*
- * The stub conn only needs the fields the engine reads: c->thread (per-thread
- * stats, logger, LRU bump buffer) and c->sfd (logger output only).
+ * The stub conn supplies per-thread stats and the LRU bump buffer without a
+ * real socket. Keep c->sfd invalid.
  */
 static void init_stub_conn(conn *c, LIBEVENT_THREAD *me)
 {
@@ -229,7 +169,7 @@ static void *run_bench_worker(void *ptr)
 }
 
 /* Mirrors the init sequence of main() in memcached.c minus sockets, protocol
- * parsing, and the optional background maintenance threads. */
+ * parsing, and the optional background maintenance and logger threads. */
 static void init_engine(void)
 {
     settings.use_cas = true;
@@ -246,7 +186,6 @@ static void init_engine(void)
     settings.verbose = 0;
 
     hash_init(MURMUR3_HASH);
-    logger_init();
     assoc_init(bench_hash_power);
     slabs_init(settings.maxbytes, settings.factor, false, NULL, NULL, false);
     memcached_thread_init(settings.num_threads, NULL);

@@ -7,14 +7,6 @@
  * base pointers stay distinct from NULL.
  */
 
-struct event_base {
-    int unused;
-};
-
-struct event_config {
-    int unused;
-};
-
 /* Single instances suffice: callers never dereference or compare them. */
 static struct event_base shim_base;
 static struct event_config shim_config;

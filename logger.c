@@ -810,9 +810,13 @@ void logger_init(void) {
     logger_stack_tail = 0;
     pthread_key_create(&logger_key, NULL);
 
+#ifndef bench_in_process
+    /* The benchmark initializes worker logging state without starting the
+     * optional background consumer. */
     if (start_logger_thread() != 0) {
         abort();
     }
+#endif
 
     /* This is what adding a STDERR watcher looks like. should replace old
      * "verbose" settings. */
@@ -821,7 +825,9 @@ void logger_init(void) {
 }
 
 void logger_stop(void) {
+#ifndef bench_in_process
     stop_logger_thread();
+#endif
 }
 
 /* called *from* the thread using a logger.

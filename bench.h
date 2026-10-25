@@ -14,6 +14,65 @@
  * stdio and formatting calls.
  */
 
+#include "ycsb.h"
+#include <pthread.h>
+
+#ifndef bench_thread_count
+#define bench_thread_count 16
+#endif
+#ifndef bench_op_count
+#define bench_op_count 10000000
+#endif
+/* Records loaded before the timed replay; record keys span [0, count). */
+#ifndef bench_record_count
+#define bench_record_count 100000
+#endif
+/* Stored record size in bytes including the trailing "\r\n". */
+#ifndef bench_record_bytes
+#define bench_record_bytes 64
+#endif
+/* YCSB workload knobs mirroring ycsb_options; theta zero samples uniformly. */
+#ifndef bench_read_percent
+#define bench_read_percent workload_a_read_percent
+#endif
+#ifndef bench_key_distribution
+#define bench_key_distribution distribution_zipfian
+#endif
+#ifndef bench_theta
+#define bench_theta 0.99
+#endif
+#ifndef bench_rng_state
+#define bench_rng_state 1
+#endif
+/* assoc hash table power; must stay above the item lock table power that
+ * memcached_thread_init derives from bench_thread_count. */
+#ifndef bench_hash_power
+#define bench_hash_power 17
+#endif
+#ifndef bench_max_bytes
+#define bench_max_bytes (2ULL * 1024 * 1024 * 1024)
+#endif
+
+/* "key" plus the longest decimal uint64 fits in 24 bytes including the NUL. */
+enum { bench_key_capacity = 24 };
+
+/* Record keys are rendered once up front; the timed replay only reads the
+ * shared table, so no formatting or stdio call is on the measured path. */
+typedef struct {
+    char text[bench_key_capacity];
+    size_t length;
+} bench_record_key;
+
+typedef struct {
+    pthread_t thread_id;
+    int worker_id;
+    const bench_record_key *keys;
+    const ycsb_workload *workload;
+    uint64_t checksum;
+    uint64_t misses;
+    uint64_t alloc_fails;
+} bench_worker;
+
 int bench_run(void);
 
 #endif /* BENCH_H */

@@ -4662,6 +4662,7 @@ static int _mc_meta_load_cb(const char *tag, void *ctx, void *data) {
     return reuse_mmap;
 }
 
+#ifndef bench_in_process
 int main (int argc, char **argv) {
     int c;
     bool lock_memory = false;
@@ -6175,3 +6176,4 @@ int main (int argc, char **argv) {
 
     return retval;
 }
+#endif

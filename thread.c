@@ -1079,6 +1079,9 @@ void memcached_thread_init(int nthreads, void *arg) {
         stats_state.reserved_fds += 5;
     }
 
+#ifndef bench_in_process
+    /* The in-process driver owns worker creation and calls the item API
+     * directly; only the server starts notification loops. */
     /* Create threads after we've done all the libevent setup. */
     for (i = 0; i < nthreads; i++) {
         create_worker(worker_libevent, &threads[i]);
@@ -1088,5 +1091,6 @@ void memcached_thread_init(int nthreads, void *arg) {
     pthread_mutex_lock(&init_lock);
     wait_for_thread_registration(nthreads);
     pthread_mutex_unlock(&init_lock);
+#endif
 }
 
